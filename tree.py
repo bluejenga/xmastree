@@ -47,6 +47,12 @@ class Tree:
             if self.is_valid_coord(x, y):
                 self.cells[x + y * width] = (Cell(x, y))
 
+        #根元、幹のCell
+        center = self.height - 2 if self.height > 1 else 0
+        self.root = self.cells[center + (height - 1) * width]
+
+        self.light = False
+
 
     def is_valid_coord(self, x, y):
         """
@@ -97,12 +103,11 @@ class Tree:
                 cell.used = False
                 cell.fixed = False
                 cell.linked_dir = [False, False, False, False]
+                cell.light = False
 
-        #木の頂点から迷路作成開始（実際にはどこからでもよい）
-        center = self.height - 2 if self.height > 1 else 0
-        start = self.cells[center]
-        start.used = True
-        links = self.get_available_links_from(start)
+        #木の根元から迷路作成開始（実際にはどこからでもよい）
+        self.root.used = True
+        links = self.get_available_links_from(self.root)
 
         #通路候補がなくなるまで繰り返し
         while len(links) > 0:
@@ -129,7 +134,8 @@ class Tree:
             s = '   ' if cell.linked_dir[DIR_S] else '---'
             w = ' ' if cell.linked_dir[DIR_W] else '|'
             e = ' ' if cell.linked_dir[DIR_E] else '|'
-            return ['+' + n + '+', w + '   ' + e, '+' + s + '+']
+            l = 'X' if cell.light else ' '
+            return [f'+{n}+', f'{w} {l} {e}', f'+{s}+']
 
         print('  ', end='')
         for x in range(self.width):
@@ -152,7 +158,7 @@ class Tree:
     def shuffle(self):
         """各セルの向きをシャッフルする"""
         for cell in self.cells:
-            if cell != None and cell.y < self.height - 1:
+            if cell != None and cell is not self.root:
                 n = random.choice(range(DIR_NUM))
                 cell.rotate(n)
 
@@ -161,6 +167,32 @@ class Tree:
         if self.is_valid_coord(x, y):
             cell = self.cells[x + y * self.width]
             cell.rotate(1)
+
+    def lightup(self):
+        """根元から辿って、繋がっているセルを点灯する"""
+        #一旦すべて消灯
+        for cell in self.cells:
+            if cell != None:
+                cell.light = False
+
+        self._lightup_recursive(self.root)
+
+    def _lightup_recursive(self, cell):
+        """lightup()の内部で再帰的に呼び出す関数"""
+        #まずは点灯
+        cell.light = True
+
+        #通路が伸びている方角を取得
+        dirs = [d for d, ln in enumerate(cell.linked_dir) if ln]
+        #その方角のセルを取得
+        lncells = [self.get_next_cell(cell, d) for d in dirs]
+        #そのセルからも自分の方に通路が伸びていれば、再帰的に点灯処理
+        for d, lncell in zip(dirs, lncells):
+            if (lncell != None
+                    and lncell.linked_dir[(d + 2) % 4] == True
+                    and lncell.light == False):
+                self._lightup_recursive(lncell)
+
 
 if __name__ == '__main__':
     """引数に木の高さを指定する"""
@@ -171,12 +203,14 @@ if __name__ == '__main__':
     tree = Tree(int(sys.argv[1]))
     tree.build()
     tree.shuffle()
-    tree.print_tree()
+    tree.lightup()
 
     print('Enter Commands.')
     print('    X Y  Rotate cell')
     print('    n    Start new game')
     print('    e    Exit')
+    print('')
+    tree.print_tree()
 
     while True:
         print('>>>', end='')
@@ -186,6 +220,7 @@ if __name__ == '__main__':
             break
         elif str == 'n':
             tree.build()
+            tree.shuffle()
         else:
             coord = str.split()
             if (len(coord) != 2
@@ -197,4 +232,5 @@ if __name__ == '__main__':
                 continue
             tree.rotate(int(coord[0]), int(coord[1]))
 
+        tree.lightup()
         tree.print_tree()
