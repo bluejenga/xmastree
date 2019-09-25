@@ -3,6 +3,7 @@
 
 import random
 import itertools
+import sys
 
 #Direction
 DIR_N = 0 #North
@@ -130,22 +131,70 @@ class Tree:
             e = ' ' if cell.linked_dir[DIR_E] else '|'
             return ['+' + n + '+', w + '   ' + e, '+' + s + '+']
 
+        print('  ', end='')
+        for x in range(self.width):
+            print(f'  {x}  ', end='')
+        print('')
+
         cellstr = [getString(cell) for cell in self.cells]
         for y in range(self.height):
             for i in range(3):
+                if i == 1:
+                    print(y, '', end='')
+                else:
+                    print('  ', end='')
+
                 for x in range(self.width):
                     print(cellstr[x + y * self.width][i], end='')
                 print()
 
 
     def shuffle(self):
+        """各セルの向きをシャッフルする"""
         for cell in self.cells:
             if cell != None and cell.y < self.height - 1:
                 n = random.choice(range(DIR_NUM))
                 cell.rotate(n)
 
+    def rotate(self, x, y):
+        """指定した座標のセルを時計回りに90度回転する"""
+        if self.is_valid_coord(x, y):
+            cell = self.cells[x + y * self.width]
+            cell.rotate(1)
+
 if __name__ == '__main__':
-    tree = Tree(10)
+    """引数に木の高さを指定する"""
+    if len(sys.argv) != 2:
+        print('usage: tree.py <height>')
+        exit()
+
+    tree = Tree(int(sys.argv[1]))
     tree.build()
-    #tree.shuffle()
+    tree.shuffle()
     tree.print_tree()
+
+    print('Enter Commands.')
+    print('    X Y  Rotate cell')
+    print('    n    Start new game')
+    print('    e    Exit')
+
+    while True:
+        print('>>>', end='')
+        str = input()
+
+        if str == 'e':
+            break
+        elif str == 'n':
+            tree.build()
+        else:
+            coord = str.split()
+            if (len(coord) != 2
+                    or coord[0].isdecimal == False
+                    or coord[1].isdecimal == False):
+                continue
+            x, y = (int(s) for s in coord)
+            if tree.is_valid_coord(x, y) == False:
+                continue
+            tree.rotate(int(coord[0]), int(coord[1]))
+
+        tree.print_tree()
