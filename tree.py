@@ -46,12 +46,15 @@ class Tree:
         for y, x in itertools.product(range(height), range(width)):
             if self.is_valid_coord(x, y):
                 self.cells[x + y * width] = (Cell(x, y))
+        #有効なセルの数
+        self.cellnum = height * height - 2 * height + 2
 
         #根元、幹のCell
         center = self.height - 2 if self.height > 1 else 0
         self.root = self.cells[center + (height - 1) * width]
 
         self.light = False
+        self.lightcellnum = 0
 
 
     def is_valid_coord(self, x, y):
@@ -104,6 +107,7 @@ class Tree:
                 cell.fixed = False
                 cell.linked_dir = [False, False, False, False]
                 cell.light = False
+                cell.lightcellnum = 0
 
         #木の根元から迷路作成開始（実際にはどこからでもよい）
         self.root.used = True
@@ -171,6 +175,7 @@ class Tree:
     def lightup(self):
         """根元から辿って、繋がっているセルを点灯する"""
         #一旦すべて消灯
+        self.lightcellnum = 0
         for cell in self.cells:
             if cell != None:
                 cell.light = False
@@ -181,6 +186,7 @@ class Tree:
         """lightup()の内部で再帰的に呼び出す関数"""
         #まずは点灯
         cell.light = True
+        self.lightcellnum = self.lightcellnum + 1
 
         #通路が伸びている方角を取得
         dirs = [d for d, ln in enumerate(cell.linked_dir) if ln]
@@ -192,6 +198,10 @@ class Tree:
                     and lncell.linked_dir[(d + 2) % 4] == True
                     and lncell.light == False):
                 self._lightup_recursive(lncell)
+
+    def is_complete(self):
+        """すべてのセルが点灯していればTrueを返す"""
+        return self.cellnum == self.lightcellnum
 
 
 if __name__ == '__main__':
@@ -234,3 +244,6 @@ if __name__ == '__main__':
 
         tree.lightup()
         tree.print_tree()
+
+        if tree.is_complete():
+            print('Congratulations!!!!!')
