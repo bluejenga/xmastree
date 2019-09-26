@@ -23,6 +23,7 @@ class Cell:
         self.used = False
         #隣接するセルと接続している方角
         self.linked_dir = [False, False, False, False] #[N, E, S, W]
+        self.light = False
 
     def rotate(self, n):
         """セルを時計回りに90*n度回転する"""
@@ -48,13 +49,13 @@ class Tree:
                 self.cells[x + y * width] = (Cell(x, y))
         #有効なセルの数
         self.cellnum = height * height - 2 * height + 2
+        #点灯しているセルの数
+        self.lightcellnum = 0
 
         #根元、幹のCell
         center = self.height - 2 if self.height > 1 else 0
         self.root = self.cells[center + (height - 1) * width]
 
-        self.light = False
-        self.lightcellnum = 0
 
 
     def is_valid_coord(self, x, y):
@@ -104,10 +105,9 @@ class Tree:
         for cell in self.cells:
             if cell != None:
                 cell.used = False
-                cell.fixed = False
                 cell.linked_dir = [False, False, False, False]
                 cell.light = False
-                cell.lightcellnum = 0
+        self.lightcellnum = 0
 
         #木の根元から迷路作成開始（実際にはどこからでもよい）
         self.root.used = True
