@@ -30,6 +30,19 @@ class Cell:
         """セルを時計回りに90*n度回転する"""
         self.linked_dir = self.linked_dir[-n:] + self.linked_dir[:-n]
 
+    def get_linked_dir_str(self):
+        """接続している方角を文字で取得する"""
+        s = ''
+        if self.linked_dir[DIR_N]:
+            s += 'N'
+        if self.linked_dir[DIR_E]:
+            s += 'E'
+        if self.linked_dir[DIR_S]:
+            s += 'S'
+        if self.linked_dir[DIR_W]:
+            s += 'W'
+        return s
+
 
 class Tree:
     """
@@ -125,37 +138,6 @@ class Tree:
             # dstを起点とした通路を候補に追加
             links.extend(self.get_available_links_from(dst))
 
-    def print_tree(self):
-        """コンソールに木の絵を出力"""
-
-        def getString(cell):
-            if cell is None:
-                return ['     '] * 3
-
-            n = '   ' if cell.linked_dir[DIR_N] else '---'
-            s = '   ' if cell.linked_dir[DIR_S] else '---'
-            w = ' ' if cell.linked_dir[DIR_W] else '|'
-            e = ' ' if cell.linked_dir[DIR_E] else '|'
-            L = 'X' if cell.light else ' '
-            return [f'+{n}+', f'{w} {L} {e}', f'+{s}+']
-
-        print('  ', end='')
-        for x in range(self.width):
-            print(f'  {x}  ', end='')
-        print('')
-
-        cellstr = [getString(cell) for cell in self.cells]
-        for y in range(self.height):
-            for i in range(3):
-                if i == 1:
-                    print(y, '', end='')
-                else:
-                    print('  ', end='')
-
-                for x in range(self.width):
-                    print(cellstr[x + y * self.width][i], end='')
-                print()
-
     def shuffle(self):
         """各セルの向きをシャッフルする"""
         for cell in self.cells:
@@ -200,6 +182,41 @@ class Tree:
         """すべてのセルが点灯していればTrueを返す"""
         return self.cellnum == self.lightcellnum
 
+    def get_cell_list(self):
+        return [c for c in self.cells if c is not None]
+
+
+def print_tree(tree):
+    """コンソールに木の絵を出力"""
+
+    def getString(cell):
+        if cell is None:
+            return ['     '] * 3
+
+        n = '   ' if cell.linked_dir[DIR_N] else '---'
+        s = '   ' if cell.linked_dir[DIR_S] else '---'
+        w = ' ' if cell.linked_dir[DIR_W] else '|'
+        e = ' ' if cell.linked_dir[DIR_E] else '|'
+        L = 'X' if cell.light else ' '
+        return [f'+{n}+', f'{w} {L} {e}', f'+{s}+']
+
+    print('  ', end='')
+    for x in range(tree.width):
+        print(f'  {x}  ', end='')
+    print('')
+
+    cellstr = [getString(cell) for cell in tree.cells]
+    for y in range(tree.height):
+        for i in range(3):
+            if i == 1:
+                print(y, '', end='')
+            else:
+                print('  ', end='')
+
+            for x in range(tree.width):
+                print(cellstr[x + y * tree.width][i], end='')
+            print()
+
 
 if __name__ == '__main__':
     """引数に木の高さを指定する"""
@@ -217,7 +234,7 @@ if __name__ == '__main__':
     print('    n    Start new game')
     print('    e    Exit')
     print('')
-    tree.print_tree()
+    print_tree(tree)
 
     while True:
         print('>>>', end='')
@@ -240,7 +257,7 @@ if __name__ == '__main__':
             tree.rotate(int(coord[0]), int(coord[1]))
 
         tree.lightup()
-        tree.print_tree()
+        print_tree(tree)
 
         if tree.is_complete():
             print('Congratulations!!!!!')
