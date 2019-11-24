@@ -6,7 +6,7 @@ import copy
 from PIL import Image, ImageTk
 from tree import Tree
 
-TREE_HEIGHT = 8
+TREE_HEIGHT = 7 
 CELL_LENGTH = 100
 
 IMG_ON_P = Image.open('image/cell_on_+.png')
@@ -27,6 +27,8 @@ class CellImageInfo:
         self.off_img = off_img.resize(size, Image.BILINEAR)
         self.on_img = on_img.resize(size, Image.BILINEAR)
         self.angle = angle
+        self.id = None
+        self.img = None
         self.photo_img = None
 
 IMG_DICT = {
@@ -73,9 +75,19 @@ class Application(tk.Frame):
         x = event.x // CELL_LENGTH
         y = event.y // CELL_LENGTH
         if self.tree.is_valid_coord(x, y):
+            self.rotate_cell(x, y)
+
+    def rotate_cell(self, x, y):
+        info = self.img_info[x][y]
+        info.angle -= 15
+        info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
+        self.canvas.itemconfigure(info.id, image = info.photo_img)
+        if info.angle % 90 == 0:
             self.tree.rotate(x, y)
             self.tree.lightup()
             self.draw_tree_canvas()
+        else:
+            self.after(15, self.rotate_cell, x, y)
 
     def draw_tree_canvas(self):
         for cell in tree.get_cell_list():
@@ -84,9 +96,13 @@ class Application(tk.Frame):
                 img = info.on_img
             else:
                 img = info.off_img
+            info.img = img
             info.photo_img = ImageTk.PhotoImage(img.rotate(info.angle))
+            info.id = self.canvas.create_image(cell.x * CELL_LENGTH,
+                                               cell.y * CELL_LENGTH,
+                                               image=info.photo_img,
+                                               anchor=tk.NW)
             self.img_info[cell.x][cell.y] = info
-            self.canvas.create_image(cell.x * CELL_LENGTH, cell.y * CELL_LENGTH, image=info.photo_img, anchor=tk.NW)
 
     def create_controls(self):
         start = tk.Button(self, text='Start', command=self.start_new_game)
