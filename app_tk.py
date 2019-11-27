@@ -6,8 +6,24 @@ import copy
 from PIL import Image, ImageTk
 from tree import Tree
 
-TREE_HEIGHT = 7 
-CELL_LENGTH = 100
+TREE_HEIGHT = 9
+DISP_RATIO = 0.75
+
+CELL_IMG_LENGTH = 100
+BG_IMG_WIDTH = 1700
+BG_IMG_HEIGHT = 1100
+BG_TREE_HEIGHT = 900
+BG_IMG_TREE_OFFSET_Y = 150
+
+TREE_WIDTH = TREE_HEIGHT * 2 - 3
+CELL_LENGTH = round(BG_TREE_HEIGHT / TREE_HEIGHT * DISP_RATIO)
+CANVAS_WIDTH = round(BG_IMG_WIDTH * DISP_RATIO)
+CANVAS_HEIGHT = round(BG_IMG_HEIGHT * DISP_RATIO)
+TREE_OFFSET_Y = round(BG_IMG_TREE_OFFSET_Y * DISP_RATIO)
+TREE_OFFSET_X = round((CANVAS_WIDTH - CELL_LENGTH * TREE_WIDTH) / 2)
+
+BG_SIZE = (CANVAS_WIDTH, CANVAS_HEIGHT)
+IMG_BG = Image.open('image/bg.png').resize(BG_SIZE, Image.BILINEAR)
 
 IMG_ON_P = Image.open('image/cell_on_+.png')
 IMG_ON_I = Image.open('image/cell_on_I.png')
@@ -30,6 +46,7 @@ class CellImageInfo:
         self.id = None
         self.img = None
         self.photo_img = None
+        self.light = None
 
 IMG_DICT = {
         'S'   :CellImageInfo(IMG_OFF_O, IMG_ON_O,   0),
@@ -65,15 +82,16 @@ class Application(tk.Frame):
 
 
     def create_tree_canvas(self):
-        w = CELL_LENGTH * self.tree.width
-        h = CELL_LENGTH * self.tree.height
+        w, h = IMG_BG.size
         self.canvas = tk.Canvas(self, width=w, height=h)
+        self.bg_img = ImageTk.PhotoImage(IMG_BG)
+        self.canvas.create_image(0, 0, image=self.bg_img, anchor=tk.NW)
         self.canvas.bind('<ButtonRelease-1>', self.onClickCanvas)
         self.canvas.pack()
 
     def onClickCanvas(self, event):
-        x = event.x // CELL_LENGTH
-        y = event.y // CELL_LENGTH
+        x = (event.x - TREE_OFFSET_X) // CELL_LENGTH
+        y = (event.y - TREE_OFFSET_Y) // CELL_LENGTH
         if self.tree.is_valid_coord(x, y):
             self.rotate_cell(x, y)
 
@@ -85,24 +103,19 @@ class Application(tk.Frame):
         if info.angle % 90 == 0:
             self.tree.rotate(x, y)
             self.tree.lightup()
-            self.draw_tree_canvas()
+            self.update_tree_canvas()
         else:
             self.after(15, self.rotate_cell, x, y)
 
-    def draw_tree_canvas(self):
+    def update_tree_canvas(self):
         for cell in tree.get_cell_list():
-            info = copy.copy(IMG_DICT[cell.get_linked_dir_str()])
-            if cell.light:
-                img = info.on_img
-            else:
-                img = info.off_img
-            info.img = img
-            info.photo_img = ImageTk.PhotoImage(img.rotate(info.angle))
-            info.id = self.canvas.create_image(cell.x * CELL_LENGTH,
-                                               cell.y * CELL_LENGTH,
-                                               image=info.photo_img,
-                                               anchor=tk.NW)
-            self.img_info[cell.x][cell.y] = info
+            info = self.img_info[cell.x][cell.y]
+            if info.light != cell.light:
+                info.img = info.on_img if cell.light else info.off_img
+                info.light = cell.light
+                info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
+                self.canvas.itemconfigure(info.id, image = info.photo_img)
+                self.img_info[cell.x][cell.y] = info
 
     def create_controls(self):
         start = tk.Button(self, text='Start', command=self.start_new_game)
@@ -112,7 +125,18 @@ class Application(tk.Frame):
         self.tree.build()
         self.tree.shuffle()
         self.tree.lightup()
-        self.draw_tree_canvas()
+
+        for cell in tree.get_cell_list():
+            x = cell.x * CELL_LENGTH + TREE_OFFSET_X
+            y = cell.y * CELL_LENGTH + TREE_OFFSET_Y
+            info = copy.copy(IMG_DICT[cell.get_linked_dir_str()])
+            info.img = info.on_img if cell.light else info.off_img
+            info.light = cell.light
+            info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
+            info.id = self.canvas.create_image(x, y,
+                                               image=info.photo_img,
+                                               anchor=tk.NW)
+            self.img_info[cell.x][cell.y] = info
 
 tree = Tree(TREE_HEIGHT)
 root = tk.Tk()
