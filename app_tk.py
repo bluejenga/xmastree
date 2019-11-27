@@ -14,6 +14,10 @@ BG_IMG_WIDTH = 1700
 BG_IMG_HEIGHT = 1100
 BG_TREE_HEIGHT = 900
 BG_IMG_TREE_OFFSET_Y = 150
+STAR_OFFSET_X = round(775 * DISP_RATIO)
+STAR_OFFSET_Y = round(20 * DISP_RATIO)
+STAR_WIDTH = round(149 * DISP_RATIO)
+STAR_HEIGHT = round(143 * DISP_RATIO)
 
 TREE_WIDTH = TREE_HEIGHT * 2 - 3
 CELL_LENGTH = round(BG_TREE_HEIGHT / TREE_HEIGHT * DISP_RATIO)
@@ -22,8 +26,14 @@ CANVAS_HEIGHT = round(BG_IMG_HEIGHT * DISP_RATIO)
 TREE_OFFSET_Y = round(BG_IMG_TREE_OFFSET_Y * DISP_RATIO)
 TREE_OFFSET_X = round((CANVAS_WIDTH - CELL_LENGTH * TREE_WIDTH) / 2)
 
+
 BG_SIZE = (CANVAS_WIDTH, CANVAS_HEIGHT)
 IMG_BG = Image.open('image/bg.png').resize(BG_SIZE, Image.BILINEAR)
+
+STAR_SIZE = (STAR_WIDTH, STAR_HEIGHT)
+IMG_STAR_OFF = Image.open('image/star_off.png').resize(STAR_SIZE, Image.BILINEAR)
+IMG_STAR_ON= Image.open('image/star_on.png').resize(STAR_SIZE, Image.BILINEAR)
+
 
 IMG_ON_P = Image.open('image/cell_on_+.png')
 IMG_ON_I = Image.open('image/cell_on_I.png')
@@ -116,6 +126,11 @@ class Application(tk.Frame):
                 info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
                 self.canvas.itemconfigure(info.id, image = info.photo_img)
                 self.img_info[cell.x][cell.y] = info
+        if tree.is_complete():
+            self.star_img = ImageTk.PhotoImage(IMG_STAR_ON)
+        else:
+            self.star_img = ImageTk.PhotoImage(IMG_STAR_OFF)
+        self.canvas.itemconfigure(self.star_id, image=self.star_img)
 
     def create_controls(self):
         start = tk.Button(self, text='Start', command=self.start_new_game)
@@ -126,6 +141,7 @@ class Application(tk.Frame):
         self.tree.shuffle()
         self.tree.lightup()
 
+# ２回目以降はUpdateでよい。
         for cell in tree.get_cell_list():
             x = cell.x * CELL_LENGTH + TREE_OFFSET_X
             y = cell.y * CELL_LENGTH + TREE_OFFSET_Y
@@ -137,6 +153,12 @@ class Application(tk.Frame):
                                                image=info.photo_img,
                                                anchor=tk.NW)
             self.img_info[cell.x][cell.y] = info
+
+        self.star_img = ImageTk.PhotoImage(IMG_STAR_OFF)
+        self.star_id = self.canvas.create_image(STAR_OFFSET_X,
+                                                STAR_OFFSET_Y,
+                                                image=self.star_img,
+                                                anchor=tk.NW)
 
 tree = Tree(TREE_HEIGHT)
 root = tk.Tk()
