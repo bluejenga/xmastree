@@ -27,23 +27,23 @@ STAR_SIZE = (STAR_WIDTH, STAR_HEIGHT)
 IMG_STAR_OFF = Image.open('image/star_off.png').resize(STAR_SIZE, Image.BILINEAR)
 IMG_STAR_ON= Image.open('image/star_on.png').resize(STAR_SIZE, Image.BILINEAR)
 
-IMG_ON_P = Image.open('image/cell_on_+.png')
-IMG_ON_I = Image.open('image/cell_on_I.png')
-IMG_ON_L = Image.open('image/cell_on_L.png')
-IMG_ON_T = Image.open('image/cell_on_T.png')
-IMG_ON_O = Image.open('image/cell_on_o.png')
-IMG_OFF_P = Image.open('image/cell_off_+.png')
-IMG_OFF_I = Image.open('image/cell_off_I.png')
-IMG_OFF_L = Image.open('image/cell_off_L.png')
-IMG_OFF_T = Image.open('image/cell_off_T.png')
-IMG_OFF_O = Image.open('image/cell_off_o.png')
+CELL_SIZE = (CELL_LENGTH, CELL_LENGTH)
+IMG_ON_P = Image.open('image/cell_on_+.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_ON_I = Image.open('image/cell_on_I.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_ON_L = Image.open('image/cell_on_L.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_ON_T = Image.open('image/cell_on_T.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_ON_O = Image.open('image/cell_on_o.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_OFF_P = Image.open('image/cell_off_+.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_OFF_I = Image.open('image/cell_off_I.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_OFF_L = Image.open('image/cell_off_L.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_OFF_T = Image.open('image/cell_off_T.png').resize(CELL_SIZE, Image.BILINEAR)
+IMG_OFF_O = Image.open('image/cell_off_o.png').resize(CELL_SIZE, Image.BILINEAR)
 
 class CellImageInfo:
     """セル毎に保持する画像に関する情報"""
     def __init__(self, off_img, on_img, angle):
-        size = (CELL_LENGTH, CELL_LENGTH)
-        self.off_img = off_img.resize(size, Image.BILINEAR)
-        self.on_img = on_img.resize(size, Image.BILINEAR)
+        self.off_img = off_img
+        self.on_img = on_img
         self.angle = angle
         self.id = None
         self.img = None
@@ -75,23 +75,47 @@ class Application(tk.Frame):
         super().__init__(master)
         self.master = master
         self.tree = tree
+        self.img_info = [[None for y in range(self.tree.height)]
+                               for x in range(self.tree.width)]
         self.create_tree_canvas()
         self.create_controls()
         self.pack()
-
-        self.img_info = [[None for y in range(self.tree.height)]
-                               for x in range(self.tree.width)]
-
 
     def create_tree_canvas(self):
         w, h = IMG_BG.size
         self.canvas = tk.Canvas(self, width=w, height=h)
         self.bg_img = ImageTk.PhotoImage(IMG_BG)
         self.canvas.create_image(0, 0, image=self.bg_img, anchor=tk.NW)
-        self.canvas.bind('<ButtonRelease-1>', self.onClickCanvas)
+
+        # アプリ開始時は完成したツリーを表示
+        self.tree.build()
+        self.tree.lightup()
+        for cell in tree.get_cell_list():
+            info = self.get_img_info_for_cell(cell)
+            x = cell.x * CELL_LENGTH + TREE_OFFSET_X
+            y = cell.y * CELL_LENGTH + TREE_OFFSET_Y
+            info.id = self.canvas.create_image(x, y,
+                                               image=info.photo_img,
+                                               anchor=tk.NW)
+            self.img_info[cell.x][cell.y] = info
+
+        self.star_img = ImageTk.PhotoImage(IMG_STAR_ON)
+        self.star_id = self.canvas.create_image(STAR_OFFSET_X,
+                                                STAR_OFFSET_Y,
+                                                image=self.star_img,
+                                                anchor=tk.NW)
+
+        self.canvas.bind('<ButtonRelease-1>', self.on_click_canvas)
         self.canvas.pack()
 
-    def onClickCanvas(self, event):
+    def get_img_info_for_cell(self, cell):
+        info = copy.copy(IMG_DICT[cell.get_linked_dir_str()])
+        info.img = info.on_img if cell.light else info.off_img
+        info.light = cell.light
+        info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
+        return info
+
+    def on_click_canvas(self, event):
         x = (event.x - TREE_OFFSET_X) // CELL_LENGTH
         y = (event.y - TREE_OFFSET_Y) // CELL_LENGTH
         if self.tree.is_valid_coord(x, y):
@@ -105,11 +129,12 @@ class Application(tk.Frame):
         if info.angle % 90 == 0:
             self.tree.rotate(x, y)
             self.tree.lightup()
-            self.update_tree_canvas()
+            self.update_tree()
+            self.update_star()
         else:
             self.after(15, self.rotate_cell, x, y)
 
-    def update_tree_canvas(self):
+    def update_tree(self):
         for cell in tree.get_cell_list():
             info = self.img_info[cell.x][cell.y]
             if info.light != cell.light:
@@ -118,6 +143,8 @@ class Application(tk.Frame):
                 info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
                 self.canvas.itemconfigure(info.id, image = info.photo_img)
                 self.img_info[cell.x][cell.y] = info
+
+    def update_star(self):
         if tree.is_complete():
             self.star_img = ImageTk.PhotoImage(IMG_STAR_ON)
         else:
@@ -133,24 +160,13 @@ class Application(tk.Frame):
         self.tree.shuffle()
         self.tree.lightup()
 
-# ２回目以降はUpdateでよい。
         for cell in tree.get_cell_list():
-            x = cell.x * CELL_LENGTH + TREE_OFFSET_X
-            y = cell.y * CELL_LENGTH + TREE_OFFSET_Y
-            info = copy.copy(IMG_DICT[cell.get_linked_dir_str()])
-            info.img = info.on_img if cell.light else info.off_img
-            info.light = cell.light
-            info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
-            info.id = self.canvas.create_image(x, y,
-                                               image=info.photo_img,
-                                               anchor=tk.NW)
+            info = self.get_img_info_for_cell(cell)
+            info.id = self.img_info[cell.x][cell.y].id # idは前回のを引き継ぐ
+            self.canvas.itemconfigure(info.id, image=info.photo_img)
             self.img_info[cell.x][cell.y] = info
 
-        self.star_img = ImageTk.PhotoImage(IMG_STAR_OFF)
-        self.star_id = self.canvas.create_image(STAR_OFFSET_X,
-                                                STAR_OFFSET_Y,
-                                                image=self.star_img,
-                                                anchor=tk.NW)
+        self.update_star()
 
 tree = Tree(TREE_HEIGHT)
 root = tk.Tk()
