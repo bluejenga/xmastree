@@ -6,7 +6,7 @@ import copy
 from PIL import Image, ImageTk
 from tree import Tree
 
-TREE_HEIGHT =3 
+TREE_HEIGHT = 9
 DISP_RATIO = 0.75
 TREE_WIDTH = TREE_HEIGHT * 2 - 3
 
@@ -79,11 +79,11 @@ class Application(tk.Frame):
         self.counter_callback_id = None
         self.img_info = [[None for y in range(self.tree.height)]
                                for x in range(self.tree.width)]
-        self.create_tree_canvas()
+        self.create_canvas()
         self.create_controls()
         self.pack()
 
-    def create_tree_canvas(self):
+    def create_canvas(self):
         w, h = IMG_BG.size
         self.canvas = tk.Canvas(self, width=w, height=h)
         self.bg_img = ImageTk.PhotoImage(IMG_BG)
@@ -107,15 +107,22 @@ class Application(tk.Frame):
                                                 image=self.star_img,
                                                 anchor=tk.NW)
 
-        # カウンター
-        self.counter_id = self.canvas.create_text(w - 20, 20, text='00:00',
-                                                  fill='#a05a2d',
-                                                  font=('', 24, 'bold'),
-                                                  anchor=tk.NE)
-        self.counter = 0
-
         self.canvas.bind('<ButtonRelease-1>', self.on_click_canvas)
         self.canvas.pack()
+
+    def create_controls(self):
+        frame = tk.Frame(self, bg='#e5f8cf', padx=5)
+        start = tk.Button(frame, text='Start', command=self.start_new_game,
+                          fg='#345834', font=('', 22, 'bold'))
+        start.pack(side=tk.LEFT, padx=5, pady=10)
+        self.counter_text = tk.StringVar()
+        self.counter_text.set('00:00')
+        self.counter_label = tk.Label(frame, textvariable=self.counter_text,
+                                      bg='#e5f8cf', fg='#345834',
+                                      font=('', 22, 'bold'))
+        self.counter_label.pack(side=tk.LEFT, padx=5, pady=10)
+
+        self.canvas.create_window(20, 20, window=frame, anchor=tk.NW)
 
     def get_img_info_for_cell(self, cell):
         info = copy.copy(IMG_DICT[cell.get_linked_dir_str()])
@@ -145,6 +152,7 @@ class Application(tk.Frame):
             if tree.is_complete():
                 self.update_star()
                 self.playing = False
+                self.counter_label.configure(fg='#ff0000')
         else:
             self.after(15, self.rotate_cell, x, y)
 
@@ -165,10 +173,6 @@ class Application(tk.Frame):
             self.star_img = ImageTk.PhotoImage(IMG_STAR_OFF)
         self.canvas.itemconfigure(self.star_id, image=self.star_img)
 
-    def create_controls(self):
-        start = tk.Button(self, text='Start', command=self.start_new_game)
-        start.pack()
-
     def start_new_game(self):
         self.playing = True
         self.tree.build()
@@ -186,14 +190,15 @@ class Application(tk.Frame):
         if self.counter_callback_id:
             self.after_cancel(self.counter_callback_id)
         self.counter = 0
-        self.canvas.itemconfigure(self.counter_id, text='00:00')
+        self.counter_text.set('00:00')
+        self.counter_label.configure(fg='#345834')
         self.counter_callback_id = self.after(1000, self.update_counter)
 
     def update_counter(self):
         if not self.tree.is_complete():
             self.counter += 1
             t = f'{self.counter//60:02d}:{self.counter%60:02d}'
-            self.canvas.itemconfigure(self.counter_id, text=t)
+            self.counter_text.set(t)
             self.counter_callback_id = self.after(1000, self.update_counter)
 
 
