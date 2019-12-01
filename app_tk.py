@@ -6,7 +6,7 @@ import copy
 from PIL import Image, ImageTk
 from tree import Tree
 
-TREE_HEIGHT = 9
+TREE_HEIGHT =3 
 DISP_RATIO = 0.75
 TREE_WIDTH = TREE_HEIGHT * 2 - 3
 
@@ -75,6 +75,8 @@ class Application(tk.Frame):
         super().__init__(master)
         self.master = master
         self.tree = tree
+        self.playing = False
+        self.counter_callback_id = None
         self.img_info = [[None for y in range(self.tree.height)]
                                for x in range(self.tree.width)]
         self.create_tree_canvas()
@@ -105,6 +107,13 @@ class Application(tk.Frame):
                                                 image=self.star_img,
                                                 anchor=tk.NW)
 
+        # カウンター
+        self.counter_id = self.canvas.create_text(w - 20, 20, text='00:00',
+                                                  fill='#a05a2d',
+                                                  font=('', 24, 'bold'),
+                                                  anchor=tk.NE)
+        self.counter = 0
+
         self.canvas.bind('<ButtonRelease-1>', self.on_click_canvas)
         self.canvas.pack()
 
@@ -116,6 +125,9 @@ class Application(tk.Frame):
         return info
 
     def on_click_canvas(self, event):
+        if not self.playing:
+            return
+
         x = (event.x - TREE_OFFSET_X) // CELL_LENGTH
         y = (event.y - TREE_OFFSET_Y) // CELL_LENGTH
         if self.tree.is_valid_coord(x, y):
@@ -130,7 +142,9 @@ class Application(tk.Frame):
             self.tree.rotate(x, y)
             self.tree.lightup()
             self.update_tree()
-            self.update_star()
+            if tree.is_complete():
+                self.update_star()
+                self.playing = False
         else:
             self.after(15, self.rotate_cell, x, y)
 
@@ -156,6 +170,7 @@ class Application(tk.Frame):
         start.pack()
 
     def start_new_game(self):
+        self.playing = True
         self.tree.build()
         self.tree.shuffle()
         self.tree.lightup()
@@ -167,6 +182,21 @@ class Application(tk.Frame):
             self.img_info[cell.x][cell.y] = info
 
         self.update_star()
+
+        if self.counter_callback_id:
+            self.after_cancel(self.counter_callback_id)
+        self.counter = 0
+        self.canvas.itemconfigure(self.counter_id, text='00:00')
+        self.counter_callback_id = self.after(1000, self.update_counter)
+
+    def update_counter(self):
+        if not self.tree.is_complete():
+            self.counter += 1
+            t = f'{self.counter//60:02d}:{self.counter%60:02d}'
+            self.canvas.itemconfigure(self.counter_id, text=t)
+            self.counter_callback_id = self.after(1000, self.update_counter)
+
+
 
 tree = Tree(TREE_HEIGHT)
 root = tk.Tk()
