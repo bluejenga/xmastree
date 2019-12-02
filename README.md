@@ -2,6 +2,8 @@
 
 クリスマスツリー点灯ゲームです。
 
+![画像](https://raw.githubusercontent.com/wiki/bluejenga/xmastree/image/xmastree.gif)
+
 ## 動作環境
 
 Python 3.6.8　(Ubuntu)
