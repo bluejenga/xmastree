@@ -4,22 +4,29 @@
 import random
 import itertools
 import sys
+from enum import IntEnum
 
-# Direction
-DIR_N = 0  # North
-DIR_E = 1  # East
-DIR_S = 2  # South
-DIR_W = 3  # West
-DIR_NUM = 4
 # 隣のセルへの座標の差分
 DELTA = [(0, -1), (1, 0), (0, 1), (-1, 0)]
 
+# Direction
+class DIR(IntEnum):
+    N = 0  # North
+    E = 1  # East
+    S = 2  # South
+    W = 3  # West
+
+    def opposite(self):
+        return (DIR.S, DIR.W, DIR.N, DIR.E)[self]
 
 class Cell:
     """Treeを構成するCellのクラス"""
     def __init__(self, x, y):
         self.x = x
         self.y = y
+        self.clear()
+
+    def clear(self):
         # 迷路の一部に割り当てられたかどうか
         self.used = False
         # 隣接するセルと接続している方角
@@ -30,18 +37,10 @@ class Cell:
         """セルを時計回りに90*n度回転する"""
         self.linked_dir = self.linked_dir[-n:] + self.linked_dir[:-n]
 
-    def get_linked_dir_str(self):
+    def __str__(self):
         """接続している方角を文字で取得する"""
-        s = ''
-        if self.linked_dir[DIR_N]:
-            s += 'N'
-        if self.linked_dir[DIR_E]:
-            s += 'E'
-        if self.linked_dir[DIR_S]:
-            s += 'S'
-        if self.linked_dir[DIR_W]:
-            s += 'W'
-        return s
+        n, e, s, w = self.linked_dir
+        return 'N'*n + 'E'*e + 'S'*s + 'W'*w
 
 
 class Tree:
@@ -103,7 +102,7 @@ class Tree:
     def get_available_links_from(self, src):
         """srcセルを起点とする使用可能な接続（通路）を列挙する"""
         links = []
-        for direction in range(DIR_NUM):
+        for direction in DIR:
             dst = self.get_next_cell(src, direction)
             if dst is not None and not dst.used:
                 links.append((src, direction, dst))
@@ -115,9 +114,7 @@ class Tree:
         # 初期化
         for cell in self.cells:
             if cell is not None:
-                cell.used = False
-                cell.linked_dir = [False, False, False, False]
-                cell.light = False
+                cell.clear()
         self.lightcellnum = 0
 
         # 木の根元から迷路作成開始（実際にはどこからでもよい）
@@ -131,7 +128,7 @@ class Tree:
             src, direction, dst = random.choice(links)
             dst.used = True
             src.linked_dir[direction] = True
-            dst.linked_dir[(direction + 2) % 4] = True
+            dst.linked_dir[direction.opposite()] = True
 
             # 既存候補の中から、dstが重複しているものを削除
             links = [ln for ln in links if ln[2] != dst]
@@ -142,7 +139,7 @@ class Tree:
         """各セルの向きをシャッフルする"""
         for cell in self.cells:
             if cell is not None and cell is not self.root:
-                n = random.choice(range(DIR_NUM))
+                n = random.choice(range(len(DIR)))
                 cell.rotate(n)
 
     def rotate(self, x, y):
@@ -168,13 +165,13 @@ class Tree:
         self.lightcellnum = self.lightcellnum + 1
 
         # 通路が伸びている方角を取得
-        dirs = [d for d, ln in enumerate(cell.linked_dir) if ln]
+        dirs = [d for d, ln in zip(DIR, cell.linked_dir) if ln]
         # その方角のセルを取得
         lncells = [self.get_next_cell(cell, d) for d in dirs]
         # そのセルからも自分の方に通路が伸びていれば、再帰的に点灯処理
         for d, lncell in zip(dirs, lncells):
             if (lncell is not None
-                    and lncell.linked_dir[(d + 2) % 4]
+                    and lncell.linked_dir[d.opposite()]
                     and not lncell.light):
                 self._lightup_recursive(lncell)
 
@@ -193,10 +190,10 @@ def print_tree(tree):
         if cell is None:
             return ['     '] * 3
 
-        n = '   ' if cell.linked_dir[DIR_N] else '---'
-        s = '   ' if cell.linked_dir[DIR_S] else '---'
-        w = ' ' if cell.linked_dir[DIR_W] else '|'
-        e = ' ' if cell.linked_dir[DIR_E] else '|'
+        n = '   ' if cell.linked_dir[DIR.N] else '---'
+        s = '   ' if cell.linked_dir[DIR.S] else '---'
+        w = ' ' if cell.linked_dir[DIR.W] else '|'
+        e = ' ' if cell.linked_dir[DIR.E] else '|'
         L = 'X' if cell.light else ' '
         return [f'+{n}+', f'{w} {L} {e}', f'+{s}+']
 

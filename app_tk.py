@@ -125,7 +125,7 @@ class Application(tk.Frame):
         self.canvas.create_window(20, 20, window=frame, anchor=tk.NW)
 
     def get_img_info_for_cell(self, cell):
-        info = copy.copy(IMG_DICT[cell.get_linked_dir_str()])
+        info = copy.copy(IMG_DICT[str(cell)])
         info.img = info.on_img if cell.light else info.off_img
         info.light = cell.light
         info.photo_img = ImageTk.PhotoImage(info.img.rotate(info.angle))
